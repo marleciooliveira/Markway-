@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>POC — Integração Zabbix, ServiceNow e AAP</title>
+<style>
+  @page { margin: 2cm 1.6cm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.5;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-size: 14px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: .2rem; }
+  h2 { font-size: 1.3rem; margin-top: 2.2rem; border-bottom: 2px solid #ddd; padding-bottom: .3rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.4rem; }
+  h4 { font-size: .95rem; margin-top: 1.1rem; }
+  .subtitle { color: #666; margin-top: 0; margin-bottom: 1.6rem; font-size: .95rem; }
+  .cover-meta { color: #666; font-size: .85rem; margin-bottom: .4rem; }
+  code {
+    background: #f2f2f2;
+    padding: .1em .35em;
+    border-radius: 3px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .88em;
+  }
+  pre {
+    background: #f6f6f6;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: .8rem 1rem;
+    overflow-x: auto;
+    font-size: .82em;
+    line-height: 1.4;
+  }
+  pre code { background: none; padding: 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+    font-size: .85em;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: .45em .6em;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #eef1f5; }
+  tr:nth-child(even) td { background: #fafafa; }
+  img.diagram { max-width: 100%; display: block; margin: 1rem auto; border: 1px solid #ddd; border-radius: 4px; }
+  .flow-ascii {
+    background: #f6f6f6;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 1rem;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .8em;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .badge { font-weight: 600; }
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #f0ad4e;
+    padding: .6rem .9rem;
+    margin: 1rem 0;
+    font-size: .9em;
+  }
+  .redacted {
+    color: #888;
+    font-style: italic;
+  }
+  .mask {
+    display: inline-block;
+    background: #333;
+    color: #fff;
+    padding: .04em .5em;
+    border-radius: 3px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .85em;
+    font-style: normal;
+    box-shadow: 0 1px 2px rgba(0,0,0,.35);
+  }
+  hr { border: none; border-top: 1px solid #ddd; margin: 2rem 0; }
+  .doc-divider {
+    margin-top: 3rem;
+    padding-top: .5rem;
+    border-top: 4px double #999;
+  }
+  ul, ol { padding-left: 1.4rem; }
+  li { margin-bottom: .25rem; }
+  .print-hint {
+    background: #eef6ff;
+    border: 1px solid #b6dbff;
+    border-radius: 4px;
+    padding: .8rem 1rem;
+    font-size: .85em;
+    margin-bottom: 2rem;
+  }
+  @media print {
+    .print-hint { display: none; }
+    body { padding: 0; }
+    h2 { break-before: page; }
+    h2:first-of-type { break-before: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="print-hint">
+  Para salvar como PDF: <strong>Ctrl+P</strong> → destino "Salvar como PDF".
+</div>
+
+<h1>POC — Integração Zabbix, ServiceNow e Ansible Automation Platform</h1>
+<p class="cover-meta">Documentação da ferramenta, status do projeto e ata da última reunião de alinhamento.</p>
+<p class="cover-meta">Gerado em: 23/09/2026 · Última atualização do status-fonte: 17/09/2026</p>
+<p class="note">Este documento foi editado para compartilhamento externo ao ambiente do projeto: IPs, hostnames internos e links de gravação/SharePoint foram substituídos por descrições genéricas (marcados em <span class="redacted">itálico cinza</span>). Nomes de pessoas e e-mails também foram mascarados por identificadores genéricos (marcados em <span class="mask">caixa escura</span>): Analista 1 = autor deste documento; Analistas 2–4 = demais membros da equipe Qintess; Administrador AAP e Especialista ServiceNow/Firewall = contatos técnicos do BASA/Chaintech.</p>
+
+<h2>1. Visão geral da solução</h2>
+
+<p>Este projeto implementa um ciclo fechado de <strong>Monitoramento Inteligente e Remediação Automática (Auto-healing)</strong>, integrando três tecnologias em um único fluxo de governança e execução: o <strong>Zabbix</strong> detecta a falha, o <strong>ServiceNow</strong> governa o processo via ITSM, e o <strong>Ansible Automation Platform (AAP)</strong> executa a correção — sem intervenção humana em falhas já conhecidas e repetitivas.</p>
+
+<p>O objetivo é reduzir o <strong>Tempo Médio de Reparo (MTTR)</strong>, seguindo o conceito de <strong>RCA (Root Cause Analysis) Orientada a Eventos</strong>: a detecção de um problema dispara automaticamente uma cadeia de governança (ITSM) e execução operacional (Automação).</p>
+
+<h3>Pilares da integração</h3>
+<ol>
+  <li><strong>Zabbix — Detecção.</strong> Monitora a infraestrutura e identifica, em tempo real, falhas conhecidas e recorrentes (ex.: serviço/agente parado).</li>
+  <li><strong>ServiceNow — Governança (ITSM).</strong> Recebe o evento do Zabbix e abre o registro formal (incidente ou alerta), garantindo rastreabilidade e servindo de porta de entrada oficial para a remediação.</li>
+  <li><strong>Ansible Automation Platform — Remediação.</strong> Executa a ação corretiva no host afetado através de um Job Template e devolve o resultado via callback, fechando o ciclo automaticamente.</li>
+</ol>
+
+<h3>Fluxo de remediação</h3>
+<div class="flow-ascii"> Zabbix                ServiceNow                  AAP
+(detecção) ───────▶ (abre incidente/alerta) ───────▶ (executa playbook)
+                                                          │
+                                                          ▼
+                          (fecha o registro) ◀────── (callback com resultado)</div>
+
+<img class="diagram" src="imagem__1_.png" alt="Diagrama de fluxo da integração">
+
+<div class="doc-divider"></div>
+<h2>2. Status atual da integração</h2>
+<p class="subtitle">Correlaciona as ações combinadas em reunião com o que realmente foi feito até agora, para dar visibilidade a todos os envolvidos (BASA, Chaintech, Qintess).</p>
+<p><strong>Legenda:</strong> 🟢 Concluído · 🟡 Parcial/Em andamento · 🔴 Pendente/Bloqueado · ⚪ Bloqueado por dependência de outro item</p>
+
+<h3>2.1 Checklist da reunião de 26/08/2026</h3>
+<table>
+<tr><th>#</th><th>Ação</th><th>Responsável</th><th>Status</th><th>Evidência / Observação</th></tr>
+<tr><td>1.1</td><td>Permissão para criar credential type <code>servicenow_callback</code></td><td><span class="mask">Administrador AAP</span></td><td>🟡 Proposto p/ fechamento</td><td>Update do <span class="mask">Analista 3</span> em 03/09: o tipo <code>ServiceNow Garbage API</code> já existe no AAP e atende a necessidade — provavelmente essa ação não precisa mais existir. Aguardando confirmação do <span class="mask">Administrador AAP</span> para fechar de vez</td></tr>
+<tr><td>1.2</td><td>Role Credential Admin ao analista na org DevOps GPROD</td><td><span class="mask">Administrador AAP</span></td><td>🔴 Pendente — bloqueio real</td><td>Confirmado em 27/08 ao criar o Job Template 88: dropdown de Credentials retornou "No results found". Com a credencial ServiceNow já criada (ver 1.4), esta é agora, junto com o item 2, a pendência que realmente trava o restante</td></tr>
+<tr><td>1.3</td><td>Credencial de máquina (SSH, sudo) para <span class="redacted">[IP do servidor de homologação]</span></td><td>Admin AAP</td><td>🔴 Pendente</td><td>Depende da role Credential Admin (item 1.2)</td></tr>
+<tr><td>1.4</td><td>Credencial <code>ServiceNow Garbage API</code> (<span class="redacted">[instância ServiceNow QA]</span>, <code>svc-evt-ansible-integration</code>)</td><td><span class="mask">Analista 3</span></td><td>🟢 Concluído (03/09)</td><td>Criada na organização <code>DevOps GPROD</code> (id 36) e anexada ao Job Template 87. Job 9233 confirmou que o playbook lê as variáveis injetadas corretamente e a chamada chega ao <span class="redacted">[instância ServiceNow QA]</span>. A credencial pessoal usada na validação inicial foi removida — não depende mais de conta de pessoa física</td></tr>
+<tr><td>2</td><td>Liberar SSH porta 22 do <span class="redacted">[servidor de execução AAP]</span> até <span class="redacted">[IP do servidor de homologação]</span></td><td>Infra/Rede</td><td>🔴 Pendente</td><td>Sem teste novo; última evidência é o job 9074 (18/08), <code>Connection refused</code>. (Não confundir com a conectividade <span class="redacted">[servidor de execução AAP]</span> → <span class="redacted">[instância ServiceNow QA]</span>, essa já confirmada — ver item 4.2). <strong>Atualização 17/09:</strong> <span class="mask">Analista 3</span> redigiu o texto do chamado, já pronto para abrir (ver seção 3). Faltam 2 campos antes de enviar: IP de origem do <span class="redacted">[servidor de execução AAP]</span> e o host de onde a equipe validou o SSH. <strong>Atenção:</strong> confirmar que o JT 87 está fixado no instance group "VM Execution" antes de abrir o chamado — se o job rodar no controlplane, sai com outro IP e a regra liberada não vale (alerta de <span class="mask">Especialista Firewall/Rede</span>)</td></tr>
+<tr><td>2.1</td><td>Verificação preventiva de firewall: ServiceNow (<span class="redacted">[instância ServiceNow QA]</span>) → <span class="redacted">[endpoint de automação AAP]</span>:443</td><td>Infra/Rede</td><td>🔴 Pendente (não testado)</td><td>Item novo, levantado na reunião de 17/09. Esse fluxo (ServiceNow disparando a automação) ainda não foi testado; incluído como 3º pedido no mesmo chamado do item 2, como verificação preventiva. O sentido inverso (<span class="redacted">[servidor de execução AAP]</span> → <span class="redacted">[instância ServiceNow QA]</span>) já está liberado e confirmado</td></tr>
+<tr><td>4.1</td><td>Rodar simulação do <code>job-limpeza-disco-tmp</code> (id 87)</td><td>—</td><td>⚪ Bloqueado</td><td>Depende de 1.3 e 2</td></tr>
+<tr><td>4.2</td><td>Confirmar callback ServiceNow sem 401</td><td>—</td><td>🔴 Bloqueado</td><td>Jobs 9227/9229 (03/09) confirmaram que a requisição sai do <span class="redacted">[servidor de execução AAP]</span>, atravessa a rede e valida o certificado na 443 — o caminho de rede está OK. O <code>401 "User is not authenticated"</code> persiste na resposta do <span class="redacted">[instância ServiceNow QA]</span>, isolado à conta de serviço. Hipóteses refinadas no contrato de payload ServiceNow, §6. <strong>Atualização 17/09:</strong> role identificada e incluída no texto do chamado (seção 3): <code>snc_platform_rest_api_access</code> para o usuário <code>svc-evt-ansible-integration</code></td></tr>
+<tr><td>4.3</td><td>Rodar <code>job-limpeza-disco-poc</code> (id 86) com credencial anexada</td><td>—</td><td>⚪ Bloqueado</td><td>Depende de 1.3 e 2</td></tr>
+</table>
+
+<h3>2.2 Sprint "Próximos Passos" (ATA 15/07/2026, cobrada por e-mail em 27/08)</h3>
+<table>
+<tr><th>#</th><th>Ação</th><th>Responsável</th><th>Status</th><th>Evidência / Observação</th></tr>
+<tr><td>1</td><td>Levantar templates existentes do Ansible</td><td>Equipe</td><td>🟢 Concluído</td><td>Repo IaC completo (<code>conf/playbooks/</code>), projeto sincronizado no AAP</td></tr>
+<tr><td>2</td><td>Validar playbook de restabelecimento do agente Zabbix</td><td>Equipe</td><td>🟡 Em andamento</td><td>Job Template 88 criado com Survey completo. Revisão de código em 09/09 encontrou um bug (ver seção 2.3.b) que precisa ser corrigido antes de qualquer execução real valer como validação</td></tr>
+<tr><td>3</td><td>Levantar requisitos de autenticação OAuth</td><td>Equipe</td><td>🔴 Pendente</td><td>Integração usa Basic/Bearer via credencial <code>ServiceNow Garbage API</code>; OAuth2 formal nunca foi levantado</td></tr>
+<tr><td>4</td><td>Validar credenciais de acesso à API</td><td>Equipe</td><td>🔴 Bloqueado (testado e falhou)</td><td>Conta <code>svc-evt-ansible-integration</code> retorna 401 em todos os endpoints do <span class="redacted">[instância ServiceNow QA]</span>, inclusive na API própria do banco — problema é da conta, não do endpoint. Único item que depende do especialista ServiceNow</td></tr>
+<tr><td>5</td><td>Definir payload e variáveis para integração</td><td>Equipe</td><td>🟡 Em revisão</td><td>Documentado no contrato de payload ServiceNow e reaproveitado no playbook de restart do agente — mas ver divergência Incident x Alert na seção 2.3.a antes de considerar fechado</td></tr>
+<tr><td>6</td><td>Preparar ambiente piloto de testes</td><td>Equipe</td><td>🟡 Parcial</td><td>Inventário + 3 Job Templates criados (86, 87, 88). Credencial ServiceNow já criada e anexada ao JT 87 (03/09). Falta credencial de máquina + SSH liberado</td></tr>
+<tr><td>7</td><td>Realizar reunião de validação técnica</td><td>Equipe</td><td>🟡 Em andamento</td><td>Reunião de 26/08 gerou o checklist da seção 2.1 desta página</td></tr>
+</table>
+
+<h3>2.3 Achados críticos (03–09/09/2026)</h3>
+
+<h4>a. Divergência de desenho: Incident x Alert</h4>
+<p>Toda a documentação atual (README, contrato ServiceNow) e os dois playbooks (<code>limpeza_disco_tmp.yml</code>, <code>restabelece_agente_zabbix.yml</code>) são construídos em cima da tabela <code>incident</code> — o callback faz <code>PATCH /api/now/table/incident/&lt;sys_id&gt;</code> com <code>state: "6"</code> / <code>close_code: "Solved (Permanently)"</code>. Revisando a ata da última reunião com <span class="mask">Especialista ServiceNow (Chaintech)</span>, o fluxo esperado parece ser outro: Zabbix abre um <strong>Alerta</strong>, o analista pode disparar a remediação a partir do alerta antes de qualquer incidente existir, e o fluxo nunca abre nem fecha incidente — só fecha o <strong>alerta</strong> quando o retorno normaliza via callback.</p>
+<p><strong>Impacto:</strong> não é um ajuste de detalhe, é um desenho de integração diferente do implementado hoje. <strong>Bloqueia o envio do contrato ServiceNow para o <span class="mask">Especialista ServiceNow (Chaintech)</span></strong> até isso ser alinhado.</p>
+
+<h4>b. Bug em <code>restabelece_agente_zabbix.yml</code> — falha falsa sempre</h4>
+<p>Encontrado pelo <span class="mask">Analista 3</span>, confirmado no código (<code>conf/playbooks/restabelece_agente_zabbix.yml:85,105</code>):</p>
+<pre><code>argv: ["systemctl", "is-active", zabbix_servico]</code></pre>
+<p>Faltam as chaves <code>{{ }}</code> — o Ansible não interpola a variável, então o comando roda literalmente contra a string <code>"zabbix_servico"</code>. <code>status_depois</code> nunca fica <code>"active"</code>, então a task "Falha se o agente não voltou a active" dispara sempre, mesmo quando o restart funcionou de verdade. Na prática o job falharia sempre e o incidente/alerta receberia nota de falha falsa. <strong>Ainda não corrigido</strong> — aguardando confirmação do <span class="mask">Analista 2</span> antes de mexer.</p>
+
+<h4>c. Callback sem diagnóstico (<code>no_log</code> sem <code>register</code>)</h4>
+<p>Mesmo playbook, tasks de callback (linhas 166, 194, 226): <code>no_log: true</code> nas chamadas HTTP de callback, sem <code>register</code> nas duas que de fato fazem a requisição (168 e 202). Qualquer erro de callback aparece só como <code>"censored"</code> no log, sem status code nem corpo de resposta. <strong>O mesmo problema já foi corrigido no <code>limpeza_disco_tmp.yml</code></strong> (commit <code>c13e3bc</code>, 03/09) — falta só portar o mesmo padrão de fix para o <code>restabelece_agente_zabbix.yml</code>.</p>
+
+<h3>2.4 Reunião de alinhamento — 17/09/2026</h3>
+<p>Ata completa na seção 3 deste documento. Esta reunião passa a ser <strong>rotineira, toda quinta-feira às 10:00</strong> (Teams, gravada).</p>
+
+<h4>Decisões / encaminhamentos</h4>
+<ul>
+  <li><strong>Texto de chamado consolidado (redigido por <span class="mask">Analista 3</span>):</strong> reúne os 3 pedidos de acesso pendentes (SSH do item 2, permissão ServiceNow do item 4.2, e a verificação preventiva do item 2.1) em um único chamado, pronto para envio. Faltam preencher apenas 2 campos: o IP de origem do <span class="redacted">[servidor de execução AAP]</span> e o host de onde a equipe validou o SSH contra <span class="redacted">[IP do servidor de homologação]</span>.</li>
+  <li><strong>Gotcha do instance group (<span class="mask">Especialista Firewall/Rede</span>):</strong> antes de abrir o chamado de firewall, confirmar que o Job Template 87 está fixado para rodar no instance group "VM Execution". Se não estiver, o job pode rodar no controlplane do AAP e sair com um IP diferente — invalidando a regra de firewall assim que ela for concedida.</li>
+  <li><strong>Servidor de homologação confirmado:</strong> <span class="redacted">[IP e hostname do servidor de homologação]</span>, RHEL, também presente no PRA.</li>
+  <li><strong>Topologia de rede:</strong> <span class="mask">Analista 2</span> vai construir um diagrama visual do projeto conforme os acessos forem sendo liberados — não é um bloqueio, é um item de apoio à comunicação com os stakeholders.</li>
+</ul>
+
+<h4>Status de acesso da equipe Qintess (Zabbix/ServiceNow/OpenShift/PRA)</h4>
+<table>
+<tr><th>Nome</th><th>E-mail Qintess</th><th>Acessos faltando</th></tr>
+<tr><td><span class="mask">Analista 1</span></td><td>[e-mail removido]</td><td>— (Zabbix OK)</td></tr>
+<tr><td><span class="mask">Analista 2</span></td><td>[e-mail removido]</td><td>— (Zabbix OK)</td></tr>
+<tr><td><span class="mask">Analista 3</span></td><td>[e-mail removido]</td><td>— (Zabbix OK)</td></tr>
+<tr><td><span class="mask">Analista 4</span></td><td>[e-mail removido]</td><td>Zabbix, ServiceNow, OpenShift, PRA</td></tr>
+</table>
+
+<h4>Pauta sugerida para a próxima reunião</h4>
+<ul>
+  <li>Fechar a questão visual da topologia (e do projeto como um todo).</li>
+  <li>Enviar o e-mail "Integração Ansible ↔ ServiceNow — conta de serviço retornando 401 no <span class="redacted">[instância ServiceNow QA]</span>".</li>
+  <li>Confirmar o IP de onde o AAP Execution Environment executa os jobs.</li>
+  <li>Validar o acesso AAP → <span class="redacted">[servidor de homologação]</span>.</li>
+  <li>Rodar teste ponta a ponta da integração com usuário real.</li>
+</ul>
+
+<h3>2.5 Resumo do impedimento raiz</h3>
+<p>O ambiente técnico (repositório, playbooks, Job Templates, contrato de payload) está pronto para os dois cenários (limpeza de disco e restabelecimento do agente Zabbix), com a ressalva da seção 2.3. O que trava a entrega:</p>
+<ol>
+  <li><strong>AAP</strong> — falta a role Credential Admin (item 1.2) para criar/anexar a credencial de máquina aos Job Templates 86, 87 e 88.</li>
+  <li><strong>Rede</strong> — SSH bloqueado do <span class="redacted">[servidor de execução AAP]</span> até <span class="redacted">[servidor de homologação]</span> (item 2), mais a verificação preventiva <span class="redacted">[instância ServiceNow QA]</span> → <span class="redacted">[endpoint de automação AAP]</span> (item 2.1). A conectividade <span class="redacted">[servidor de execução AAP]</span> → <span class="redacted">[instância ServiceNow QA]</span> <strong>já foi confirmada</strong> e saiu da lista. Texto do chamado já está redigido (seção 2.4) — faltam só 2 campos (IP de origem e host de teste) antes de abrir. <strong>Pré-requisito antes de abrir o chamado:</strong> confirmar que o JT 87 está fixado no instance group "VM Execution" (seção 2.4), senão a regra de firewall concedida pode não valer.</li>
+  <li><strong>ServiceNow</strong> — conta de serviço com 401 em todos os endpoints do <span class="redacted">[instância ServiceNow QA]</span> — único item fora do controle da equipe Ansible. Role identificada: <code>snc_platform_rest_api_access</code> (seção 2.4).</li>
+  <li><strong>Novo, fora do eixo de acesso</strong> — a divergência Incident x Alert (seção 2.3.a) e o bug de falha falsa (seção 2.3.b) precisam ser resolvidos antes que qualquer teste ponta a ponta seja considerado válido, mesmo depois que os 3 acessos acima forem liberados.</li>
+</ol>
+
+<div class="doc-divider"></div>
+<h2>3. Ata da reunião de alinhamento — 17/09/2026 (DevOps GPROD)</h2>
+
+<h3>Considerações iniciais</h3>
+<p><strong><span class="mask">Analista 2</span>:</strong> Topologia de rede — marcar como já feito no planner. Será construída conforme o acesso disponível durante as atividades. Necessário conceitos visuais da topologia de rede: facilita e agiliza a compreensão.</p>
+
+<h3>Pauta 1 — Alinhar entendimento sobre a "liberação do agente AAP"</h3>
+<p><strong><span class="mask">Analista 1</span>:</strong> "Bom dia <span class="mask">Especialista Firewall/Rede</span>. Se conseguir pra nós um status sobre o chamado para liberação de regra do agente do AAP → servidor de homologação, agradeço."</p>
+<p>O <strong>servidor de homologação</strong> é: <span class="redacted">[IP do servidor de homologação]</span> (está no PRA também), hostname: <span class="redacted">[hostname do servidor de homologação]</span>, servidor RHEL para desenvolvimento.</p>
+<p><strong>Problema reportado:</strong> connection refused do AAP para o servidor de homologação. Provavelmente bloqueio de firewall entre as redes (CORED), envolvendo o IP dos itens acima. Necessário verificar autorização de firewall e conexão direta com o servidor de homologação.</p>
+<p>Elevação do usuário sudo: qual usuário (de serviço)? Verificar como o AAP precisa acessar o servidor de homologação:</p>
+<ul>
+  <li>Validar o Execution Environment do projeto no AAP, de onde os jobs executam, qual IP (para liberar rede possivelmente).</li>
+  <li>Verificar relação do usuário <code>svc-tower</code> no projeto AAP: é necessária alguma chave SSH deste no servidor de homologação? (Presume-se necessidade de uma conta de serviço, usuário Linux, no servidor que consta no "Inventory" do AAP, de onde o AAP fará execução de jobs pelo Execution Environment e acessará os hosts constantes no Inventory — por enquanto, somente o servidor de homologação.)</li>
+</ul>
+
+<p>Problema que o <span class="mask">Analista 3</span> apontou sobre ServiceNow → API → AAP. <strong>O que falta hoje: 1) autenticação e 2) permissão.</strong></p>
+<p>Verificar com <span class="mask">Especialista ServiceNow (Chaintech)</span>, usuário <code>svc-evt-ansible-integration</code>. Dentro do AAP esse usuário retorna 401, especificamente nos endpoints ServiceNow:</p>
+<pre><code>/api/now/table/incident
+/api/now/table/sys_user
+/api/bada/garbage_automation_api</code></pre>
+<p>Sugestão é adicionar a role: <code>snc_platform_rest_api_access</code></p>
+
+<p><strong><span class="mask">Analista 3</span>:</strong></p>
+<pre><code>1. O usuário de serviço "svc-evt-ansible-integration" recebe 401 vindo da
+   própria instância ServiceNow. A requisição sai do nosso servidor,
+   atravessa a rede e valida o certificado, então o problema é
+   estritamente de autenticação/permissão.
+2. O erro que temos não é timeout, é Connection refused: ssh: connect to
+   host [IP do servidor de homologação] port 22: Connection refused.
+   Bloqueio de firewall por drop dá timeout. Connection refused significa
+   que veio um TCP RST de volta — ou o pacote chegou no host e não há
+   nada escutando na porta 22 (sshd parado ou em outra porta), ou existe
+   uma regra configurada como reject em vez de drop na regra de firewall.</code></pre>
+
+<p><strong>Texto sugerido por <span class="mask">Analista 3</span> (para o chamado de acesso):</strong></p>
+<pre><code>Prezados, boa tarde!
+
+Estamos finalizando a automação que integra Zabbix, ServiceNow e Ansible
+Automation Platform: o incidente é aberto, a remediação executa sozinha no
+servidor e o resultado volta registrado no chamado.
+
+A automação já está pronta e testada. Faltam três liberações de acesso.
+
+1. Firewall — SSH do Ansible para o servidor
+
+   Origem:   [servidor de execução AAP] · IP __________ [preencher]
+   Destino:  [IP do servidor de homologação]
+   Porta:    22/TCP
+   Sentido:  unidirecional
+
+   É por aqui que a automação entra no servidor para executar as ações.
+   Hoje todas as tentativas falham com "Connection refused" (jobs 9074,
+   9118, 9120, 9227, 9229, 9231 e 9233 no AAP).
+
+   Já verificamos do nosso lado: o SSH do servidor está ativo e escutando
+   na 22 — conectamos com sucesso a partir do __________ [preencher]. O
+   bloqueio está no caminho de rede.
+
+   Um detalhe que ajuda na busca: o retorno é "Connection refused", não
+   timeout. Bloqueio por drop costuma dar timeout, então o RST indica uma
+   regra de reject. Procurar só por regras de drop pode não localizá-la.
+
+2. ServiceNow — permissão do usuário de serviço para o callback
+
+   Instância: [instância ServiceNow QA]
+   Usuário:   svc-evt-ansible-integration
+   Permissão: acesso à REST API com escrita em incident
+   Role:      snc_platform_rest_api_access
+
+   É por aqui que a automação devolve o resultado: registra a nota técnica
+   no incidente e, quando a remediação dá certo, resolve o chamado.
+
+   Hoje o usuário retorna HTTP 401 "User is not authenticated" em todos os
+   endpoints que testamos — /api/now/table/incident, /api/now/table/sys_user
+   e /api/bada/garbage_automation_api. Como falha inclusive na API própria
+   do banco, parece ser permissão da conta e não do endpoint.
+
+   Vale registrar que o 401 vem da própria instância: a requisição sai,
+   atravessa a rede e valida o certificado. Não há bloqueio de rede aqui,
+   e o teste foi refeito com a credencial oficial já configurada no AAP.
+
+   Não estamos pedindo nenhum desenvolvimento no ServiceNow — o callback
+   usa apenas a Table API padrão.
+
+3. Firewall — ServiceNow para o Ansible (verificação preventiva)
+
+   Origem:   ServiceNow [instância QA] (faixa de saída, a confirmar com o time)
+   Destino:  [endpoint de automação AAP]
+   Porta:    443/TCP
+   Sentido:  unidirecional
+
+   É por aqui que o ServiceNow dispara a automação. Esse fluxo ainda não
+   foi testado, e pedimos a verificação para que não vire um bloqueio na
+   hora da implementação. O sentido inverso, do Ansible para o ServiceNow,
+   já está liberado e confirmado em teste.
+
+Sobre credenciais: senhas e chaves não devem trafegar por e-mail ou chamado.
+Se algo precisar ser provisionado ou redefinido, nos avisem para fazermos
+por cofre.
+
+Assim que os acessos saírem, rodamos a automação em modo simulação — que só
+inventaria o que seria removido, sem alterar nada no servidor — e voltamos
+com o resultado aqui.
+
+Obrigado!
+
+Dois campos: o IP do servidor de execução AAP e o servidor de onde foi
+testado o SSH.
+
+Lembrando do ponto do instance group: se o JT 87 não for fixado em "VM
+Execution", o job pode rodar no controlplane e sair com outro IP — aí a
+regra do item 1 não pega. Vale fixar antes de abrir o chamado.</code></pre>
+
+<h3>Pauta 2 — Status sobre credenciais de acesso</h3>
+<table>
+<tr><th>Nome</th><th>E-mail Qintess</th><th>Acessos faltando</th></tr>
+<tr><td><span class="mask">Analista 1</span></td><td>[e-mail removido]</td><td>Zabbix</td></tr>
+<tr><td><span class="mask">Analista 2</span></td><td>[e-mail removido]</td><td>Zabbix</td></tr>
+<tr><td><span class="mask">Analista 3</span></td><td>[e-mail removido]</td><td>Zabbix</td></tr>
+<tr><td><span class="mask">Analista 4</span></td><td>[e-mail removido]</td><td>Zabbix, ServiceNow, OpenShift, PRA</td></tr>
+</table>
+
+<h3>Pauta 3 — Sugestões para a próxima reunião</h3>
+<ul>
+  <li>Questão visual da topologia (e do projeto em si, como um todo).</li>
+  <li>E-mail "Integração Ansible ↔ ServiceNow — conta de serviço retornando 401 na instância ServiceNow QA".</li>
+  <li>Retornar IP de onde executa o AAP Execution Environment.</li>
+  <li>Acessos de AAP até o servidor de homologação.</li>
+  <li>Testes com usuário e ponta a ponta com a integração.</li>
+</ul>
+
+<h3>Considerações finais</h3>
+<p><span class="redacted">[link interno do repositório GitLab removido]</span> — adicionar material criado de reuniões aqui.</p>
+<p><strong><span class="mask">Especialista Firewall/Rede</span>:</strong> lembrete de que essa reunião é rotineira, quinta-feira às 10:00h.</p>
+<p>A gravação da reunião está disponível na thread do canal <code>DevOps GPROD</code> da equipe <code>DevOps GPROD</code> no Teams, e também no diretório <code>Records</code> do SharePoint desta equipe (sem expiração).</p>
+<p><span class="redacted">[links internos de chat, recapitulação e gravação da reunião no Teams/SharePoint removidos]</span></p>
+
+</body>
+</html>
