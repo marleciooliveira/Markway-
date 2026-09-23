@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda — Projeto concorrente (BASA)</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", Calibri, Arial, sans-serif;
+    color: #1a1a1a;
+    line-height: 1.5;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2.5rem 1.2rem 4rem;
+    background: #fafafa;
+  }
+  h1 { font-size: 1.6rem; margin-bottom: .3rem; }
+  .subtitle { color: #555; margin-top: 0; margin-bottom: 2rem; font-size: .95rem; }
+  .back-link { font-size: .85rem; }
+  .back-link a { color: #555; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e2e2e2;
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card h2 {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #888;
+    margin: 0 0 .5rem;
+  }
+  .card p { margin: 0; font-size: .98rem; }
+  .status-pill {
+    display: inline-block;
+    font-size: .8rem;
+    font-weight: 600;
+    padding: .15em .7em;
+    border-radius: 999px;
+    background: #fff3cd;
+    color: #8a610;
+    margin-bottom: .5rem;
+  }
+  .meeting {
+    background: #eef6ff;
+    border: 1px solid #b6dbff;
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+  .meeting h2 {
+    font-size: .95rem;
+    margin: 0 0 .3rem;
+  }
+  .meeting .time {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+  .footer-note {
+    font-size: .85rem;
+    color: #777;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e2e2;
+  }
+  a.doc-link {
+    display: inline-block;
+    margin-top: .4rem;
+    font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+
+<p class="back-link"><a href="index.html">← Documentação completa da POC</a></p>
+
+<h1>Agenda — Projeto concorrente (Banco da Amazônia / BASA)</h1>
+<p class="subtitle">Resumo de alinhamento de disponibilidade durante o período na Markway (compromisso via Qintess, projeto em andamento antes de iniciar aqui).</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>Cliente / Projeto</h2>
+    <p>Banco da Amazônia (BASA) — POC de integração Zabbix ↔ ServiceNow ↔ Ansible Automation Platform</p>
+  </div>
+  <div class="card">
+    <h2>Papel</h2>
+    <p>Analista Ansible / DevOps (via Qintess)</p>
+  </div>
+  <div class="card">
+    <h2>Prazo previsto</h2>
+    <p>Segunda quinzena de novembro/2026 <em>(atrasado)</em></p>
+  </div>
+  <div class="card">
+    <h2>Situação do prazo</h2>
+    <span class="status-pill">🟡 Bloqueado por terceiros</span>
+    <p>Ambiente técnico pronto. Atraso não é de escopo/desenvolvimento — depende da conclusão de um chamado de liberação de firewall aberto junto à Infra/Rede do cliente.</p>
+  </div>
+  <div class="card full">
+    <h2>Status atual (resumo)</h2>
+    <p>Chamado de liberação de firewall já redigido e pronto para abertura formal; é o único bloqueio real restante para rodar o teste ponta a ponta. Demais pendências (credenciais, achados de revisão de código) estão em andamento em paralelo e não dependem de terceiros.</p>
+  </div>
+</div>
+
+<div class="meeting">
+  <h2>Reunião recorrente</h2>
+  <div class="time">Quinta-feira, 10:00</div>
+  <p>Reunião de alinhamento semanal do projeto (Teams). Único compromisso fixo de agenda relacionado ao BASA durante o período na Markway.</p>
+</div>
+
+<div class="footer-note">
+  Documento resumido para fins de alinhamento de agenda. Detalhes técnicos completos (status, bloqueios, decisões de reunião) estão na
+  <a class="doc-link" href="index.html">documentação da POC</a>.
+</div>
+
+</body>
+</html>
